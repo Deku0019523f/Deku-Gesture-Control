@@ -1,0 +1,17 @@
+{
+    "camera": {
+        "device": 0,
+        "width": 1280,
+        "height": 720,
+        "fps": 30
+    },
+    "cursor": {
+        "sensitivity": 1.0,
+        "smoothing": 0.5,
+        "dead_zone": 0.02
+    },
+    "gestures": {
+        "confidence_threshold": 0.8,
+        "click_cooldown": 0.3
+    }
+}
