@@ -1,12 +1,14 @@
 """
-Fenêtre principale — Phase 1.
+Fenêtre principale — Phases 1 à 4.
 
-Pipeline actuel : Webcam -> CameraManager -> OpenCV Frame -> affichage Qt.
-Aucune reconnaissance de gestes ni contrôle souris/clavier ici (phases
-suivantes).
+Pipeline : Webcam -> CameraManager -> OpenCV Frame -> HandTracker (MediaPipe)
+-> HandData -> Landmark Processor -> Hand Geometry -> Gesture Engine (pinch)
+-> affichage ; en parallèle, Index -> Cursor Controller -> Mouse Controller
+-> curseur système réel (spec section 4/29).
 
-La lecture caméra tourne dans un QThread dédié (CameraWorker) pour ne
-jamais bloquer l'interface (spec section 24).
+Aucun clic, drag, scroll ni raccourci clavier n'est encore déclenché
+(Phase 5+). La lecture caméra + tout le traitement tournent dans un
+QThread dédié (CameraWorker) pour ne jamais bloquer l'UI (spec section 24).
 """
 from __future__ import annotations
 
@@ -42,14 +44,18 @@ from core.constants import (
     WINDOW_MIN_HEIGHT,
     WINDOW_MIN_WIDTH,
 )
+from cursor.cursor_controller import CursorController
+from gestures.gesture_engine import GestureEngine, GestureSnapshot
+from vision.hand_tracker import INDEX_TIP, HandTracker, draw_landmarks
 
 logger = logging.getLogger("deku.ui")
 
 
 class CameraWorker(QThread):
-    """Boucle de lecture caméra exécutée hors du thread UI."""
+    """Lit les frames, exécute le suivi de main + les gestes + le curseur,
+    hors du thread UI."""
 
-    frame_ready = Signal(np.ndarray, float)  # frame BGR, fps instantané
+    frame_ready = Signal(np.ndarray, float, object)  # frame BGR annotée, fps, GestureSnapshot
     camera_error = Signal(str)
 
     MAX_CONSECUTIVE_FAILURES = 30  # ~1s à 30fps avant de considérer une déconnexion
@@ -64,27 +70,53 @@ class CameraWorker(QThread):
         prev_time = time.perf_counter()
         consecutive_failures = 0
 
-        while self._running:
-            try:
-                ok, frame = self._camera_manager.read_frame()
-            except CameraError as exc:
-                self.camera_error.emit(str(exc))
-                return
+        try:
+            hand_tracker = HandTracker(num_hands=1)
+        except Exception as exc:  # modèle absent, pas d'Internet, etc.
+            logger.error("Initialisation du suivi de main impossible : %s", exc)
+            self.camera_error.emit(str(exc))
+            return
 
-            if not ok:
-                consecutive_failures += 1
-                if consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
-                    self.camera_error.emit("La webcam semble déconnectée.")
+        gesture_engine = GestureEngine()
+        cursor_controller = CursorController()
+
+        try:
+            while self._running:
+                try:
+                    ok, frame = self._camera_manager.read_frame()
+                except CameraError as exc:
+                    self.camera_error.emit(str(exc))
                     return
-                continue
 
-            consecutive_failures = 0
-            now = time.perf_counter()
-            elapsed = now - prev_time
-            prev_time = now
-            fps = 1.0 / elapsed if elapsed > 0 else 0.0
+                if not ok:
+                    consecutive_failures += 1
+                    if consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
+                        self.camera_error.emit("La webcam semble déconnectée.")
+                        return
+                    continue
 
-            self.frame_ready.emit(frame, fps)
+                consecutive_failures = 0
+                now = time.perf_counter()
+                elapsed = now - prev_time
+                prev_time = now
+                fps = 1.0 / elapsed if elapsed > 0 else 0.0
+
+                frame_height, frame_width = frame.shape[:2]
+                hands = hand_tracker.process(frame)
+                hand_data = hands[0] if hands else None
+
+                snapshot = gesture_engine.process(hand_data, frame_width, frame_height)
+
+                if hand_data is not None and hand_data.is_valid:
+                    draw_landmarks(frame, hand_data)
+                    index_x, index_y, _ = hand_data.landmarks[INDEX_TIP]
+                    cursor_controller.update(index_x, index_y)
+                else:
+                    cursor_controller.reset()
+
+                self.frame_ready.emit(frame, fps, snapshot)
+        finally:
+            hand_tracker.close()
 
     def stop(self) -> None:
         self._running = False
@@ -110,7 +142,7 @@ class MainWindow(QMainWindow):
         central = QWidget()
         root = QVBoxLayout(central)
         root.setContentsMargins(24, 20, 24, 24)
-        root.setSpacing(16)
+        root.setSpacing(14)
 
         # --- En-tête : logo + titre + statut ---
         header = QHBoxLayout()
@@ -128,7 +160,7 @@ class MainWindow(QMainWindow):
         title_box.setSpacing(2)
         title = QLabel(APP_NAME.upper())
         title.setObjectName("titleLabel")
-        subtitle = QLabel(f"v{APP_VERSION} — Phase 1 : caméra")
+        subtitle = QLabel(f"v{APP_VERSION} — Phases 1 à 4 : caméra, main, gestes, curseur")
         subtitle.setObjectName("subtitleLabel")
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
@@ -145,9 +177,20 @@ class MainWindow(QMainWindow):
         self.video_label = QLabel("Caméra arrêtée")
         self.video_label.setObjectName("videoLabel")
         self.video_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.video_label.setMinimumSize(640, 400)
+        self.video_label.setMinimumSize(640, 380)
         self.video_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         root.addWidget(self.video_label, stretch=1)
+
+        # --- Barre d'info main/geste ---
+        info_bar = QHBoxLayout()
+        self.hand_label = QLabel("Main : —")
+        self.hand_label.setObjectName("infoLabel")
+        self.gesture_label = QLabel("Geste : —")
+        self.gesture_label.setObjectName("infoLabel")
+        info_bar.addWidget(self.hand_label)
+        info_bar.addStretch()
+        info_bar.addWidget(self.gesture_label)
+        root.addLayout(info_bar)
 
         # --- Pied : FPS + bouton Start/Stop ---
         footer = QHBoxLayout()
@@ -174,6 +217,7 @@ class MainWindow(QMainWindow):
             #subtitleLabel {{ font-size: 12px; color: {COLOR_TEXT_MUTED}; }}
             #statusLabel {{ font-size: 13px; font-weight: 600; }}
             #fpsLabel {{ font-size: 13px; color: {COLOR_TEXT_MUTED}; }}
+            #infoLabel {{ font-size: 13px; color: {COLOR_TEXT_MUTED}; }}
             #videoLabel {{
                 background-color: {COLOR_BG_PANEL};
                 border: 1px solid #2a2f36;
@@ -217,6 +261,7 @@ class MainWindow(QMainWindow):
 
         self.toggle_button.setText("ARRÊTER")
         self.status_label.setText("🟢 ACTIVE")
+        logger.info("Contrôle du curseur par l'index activé.")
 
     def _stop_camera(self) -> None:
         if self._worker is not None:
@@ -229,11 +274,13 @@ class MainWindow(QMainWindow):
         self.toggle_button.setText("DÉMARRER")
         self.status_label.setText("🔴 INACTIVE")
         self.fps_label.setText("FPS : --")
+        self.hand_label.setText("Main : —")
+        self.gesture_label.setText("Geste : —")
         self.video_label.setText("Caméra arrêtée")
         self.video_label.setPixmap(QPixmap())
 
-    @Slot(np.ndarray, float)
-    def _on_frame_ready(self, frame: np.ndarray, fps: float) -> None:
+    @Slot(np.ndarray, float, object)
+    def _on_frame_ready(self, frame: np.ndarray, fps: float, snapshot: GestureSnapshot) -> None:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb.shape
         qt_image = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
@@ -244,6 +291,15 @@ class MainWindow(QMainWindow):
         )
         self.video_label.setPixmap(pixmap)
         self.fps_label.setText(f"FPS : {fps:.1f}")
+
+        if snapshot.hand_detected:
+            self.hand_label.setText(
+                f"Main : 🟢 détectée ({snapshot.confidence * 100:.0f}%) — ouverture {snapshot.hand_openness * 100:.0f}%"
+            )
+            self.gesture_label.setText(f"Geste : {snapshot.gesture_name} — {snapshot.state_name}")
+        else:
+            self.hand_label.setText("Main : ⚪ non détectée")
+            self.gesture_label.setText("Geste : —")
 
     @Slot(str)
     def _on_camera_error(self, message: str) -> None:
