@@ -1,1 +1,6 @@
-{}
+{
+    "pinch": "left_click",
+    "pinch_double": "double_click",
+    "pinch_hold_and_move": "drag",
+    "two_fingers": "right_click"
+}

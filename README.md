@@ -17,12 +17,17 @@ ni vidéo n'est jamais envoyée vers un serveur distant.
   PINCH (confirmation multi-frames, durée minimale, cooldown).
 - **Phase 4** — `CursorController` : l'index pilote réellement le curseur
   système (calibration de zone active, sensibilité, lissage exponentiel,
-  zone morte). **Aucun clic n'est encore déclenché** — ça arrive en Phase 5.
+  zone morte).
+- **Phase 5** — le geste PINCH pilote désormais de vraies actions souris :
+  clic gauche (pinch bref), double-clic (deux pinch rapides), glisser-déposer
+  (pinch maintenu + déplacement). Le geste "deux doigts" (index + majeur
+  tendus) déclenche le clic droit.
 
 ⚠️ **À savoir avant de lancer l'app** : dès que la caméra est démarrée et
-qu'une main est détectée, le **curseur de la souris bouge réellement**,
-piloté par la position de l'index. Cliquez sur **ARRÊTER** (ou fermez la
-fenêtre) pour reprendre le contrôle normal de la souris.
+qu'une main est détectée, le **curseur bouge réellement** et les **clics
+sont réellement envoyés au système**, pilotés par tes gestes. Cliquez sur
+**ARRÊTER** (ou fermez la fenêtre) pour reprendre le contrôle normal de la
+souris.
 
 📶 **Premier lancement** : `HandTracker` télécharge automatiquement le
 modèle `hand_landmarker.task` (~10 Mo) depuis les serveurs Google au
@@ -81,7 +86,7 @@ deku-gesture-control/
 | 2 ✅ | MediaPipe, HandTracker, affichage des landmarks |
 | 3 ✅ | Géométrie de la main, détection du pinch, machine à états |
 | 4 ✅ | Contrôle du curseur (calibration, lissage) |
-| 5 | Clic gauche/droit, double-clic, drag & drop |
+| 5 ✅ | Clic gauche/droit, double-clic, drag & drop |
 | 6 | Scroll, swipe, raccourcis clavier |
 | 7 | Interface PySide6 complète |
 | 8 | Profils, paramètres, mapping personnalisable, mode debug |
@@ -90,8 +95,7 @@ deku-gesture-control/
 
 ## Prochaine étape
 
-Une fois les Phases 1 à 4 validées sur ta machine (webcam, landmarks,
-pinch détecté sans faux positif, curseur qui suit l'index correctement),
-passer à la Phase 5 : clic gauche/droit, double-clic, drag & drop —
-c'est-à-dire relier enfin le geste PINCH à une vraie action souris via
-`input/mouse_controller.py` et le mapping gestes -> actions.
+Une fois les Phases 1 à 5 validées sur ta machine (clic, double-clic et
+drag & drop fiables, sans faux déclenchement), passer à la Phase 6 :
+scroll (mouvement vertical de la main), gestes de swipe
+(navigation) et raccourcis clavier configurables.

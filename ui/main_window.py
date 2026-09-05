@@ -46,6 +46,7 @@ from core.constants import (
 )
 from cursor.cursor_controller import CursorController
 from gestures.gesture_engine import GestureEngine, GestureSnapshot
+from input.mouse_controller import MouseController
 from vision.hand_tracker import INDEX_TIP, HandTracker, draw_landmarks
 
 logger = logging.getLogger("deku.ui")
@@ -78,7 +79,8 @@ class CameraWorker(QThread):
             return
 
         gesture_engine = GestureEngine()
-        cursor_controller = CursorController()
+        mouse_controller = MouseController()
+        cursor_controller = CursorController(mouse_controller=mouse_controller)
 
         try:
             while self._running:
@@ -113,6 +115,24 @@ class CameraWorker(QThread):
                     cursor_controller.update(index_x, index_y)
                 else:
                     cursor_controller.reset()
+
+                if snapshot.action == "LEFT_CLICK":
+                    logger.info("Action : clic gauche")
+                    mouse_controller.left_click()
+                elif snapshot.action == "DOUBLE_CLICK":
+                    logger.info("Action : double-clic")
+                    mouse_controller.double_click()
+                elif snapshot.action == "RIGHT_CLICK":
+                    logger.info("Action : clic droit")
+                    mouse_controller.right_click()
+                elif snapshot.action == "DRAG_START":
+                    logger.info("Action : début du drag")
+                    mouse_controller.drag_start()
+                elif snapshot.action == "DRAG_END":
+                    logger.info("Action : fin du drag")
+                    mouse_controller.drag_end()
+                # DRAG_MOVE : rien à faire ici, le déplacement continu du
+                # curseur ci-dessus suffit pendant que le bouton est maintenu.
 
                 self.frame_ready.emit(frame, fps, snapshot)
         finally:
@@ -160,7 +180,7 @@ class MainWindow(QMainWindow):
         title_box.setSpacing(2)
         title = QLabel(APP_NAME.upper())
         title.setObjectName("titleLabel")
-        subtitle = QLabel(f"v{APP_VERSION} — Phases 1 à 4 : caméra, main, gestes, curseur")
+        subtitle = QLabel(f"v{APP_VERSION} — Phases 1 à 5 : caméra, main, gestes, curseur, clics")
         subtitle.setObjectName("subtitleLabel")
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
@@ -190,6 +210,10 @@ class MainWindow(QMainWindow):
         info_bar.addWidget(self.hand_label)
         info_bar.addStretch()
         info_bar.addWidget(self.gesture_label)
+        info_bar.addStretch()
+        self.action_label = QLabel("Action : —")
+        self.action_label.setObjectName("infoLabel")
+        info_bar.addWidget(self.action_label)
         root.addLayout(info_bar)
 
         # --- Pied : FPS + bouton Start/Stop ---
@@ -276,6 +300,7 @@ class MainWindow(QMainWindow):
         self.fps_label.setText("FPS : --")
         self.hand_label.setText("Main : —")
         self.gesture_label.setText("Geste : —")
+        self.action_label.setText("Action : —")
         self.video_label.setText("Caméra arrêtée")
         self.video_label.setPixmap(QPixmap())
 
@@ -300,6 +325,9 @@ class MainWindow(QMainWindow):
         else:
             self.hand_label.setText("Main : ⚪ non détectée")
             self.gesture_label.setText("Geste : —")
+
+        if snapshot.action:
+            self.action_label.setText(f"Action : {snapshot.action}")
 
     @Slot(str)
     def _on_camera_error(self, message: str) -> None:

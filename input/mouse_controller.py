@@ -33,30 +33,31 @@ class MouseController:
     def move(self, x: float, y: float) -> None:
         pyautogui.moveTo(int(x), int(y))
 
-    # --- Réservé Phase 5/6 ---
+    # --- Phase 5 ---
     def left_click(self) -> None:
-        raise NotImplementedError("Clic gauche : Phase 5")
+        pyautogui.click(button="left")
 
     def right_click(self) -> None:
-        raise NotImplementedError("Clic droit : Phase 5")
+        pyautogui.click(button="right")
 
     def double_click(self) -> None:
-        raise NotImplementedError("Double-clic : Phase 5")
+        pyautogui.doubleClick()
 
     def mouse_down(self) -> None:
-        raise NotImplementedError("Maintien de clic : Phase 5")
+        pyautogui.mouseDown(button="left")
 
     def mouse_up(self) -> None:
-        raise NotImplementedError("Relâchement de clic : Phase 5")
-
-    def scroll(self, amount: int) -> None:
-        raise NotImplementedError("Scroll : Phase 6")
+        pyautogui.mouseUp(button="left")
 
     def drag_start(self) -> None:
-        raise NotImplementedError("Drag & drop : Phase 5")
+        self.mouse_down()
 
     def drag_move(self, x: float, y: float) -> None:
-        raise NotImplementedError("Drag & drop : Phase 5")
+        self.move(x, y)
 
     def drag_end(self) -> None:
-        raise NotImplementedError("Drag & drop : Phase 5")
+        self.mouse_up()
+
+    # --- Réservé Phase 6 ---
+    def scroll(self, amount: int) -> None:
+        raise NotImplementedError("Scroll : Phase 6")
