@@ -8,4 +8,5 @@ logs/
 .idea/
 build/
 dist/
-*.spec
+.pytest_cache/
+assets/models/
