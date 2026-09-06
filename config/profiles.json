@@ -1,1 +1,35 @@
-{}
+{
+    "default": {
+        "description": "Navigation normale",
+        "settings": {},
+        "gestures": {}
+    },
+    "gaming": {
+        "description": "Curseur plus sensible, moins de lissage",
+        "settings": {
+            "cursor": {
+                "sensitivity": 1.4,
+                "smoothing": 0.3
+            }
+        },
+        "gestures": {}
+    },
+    "presentation": {
+        "description": "Swipes pour changer de diapositive",
+        "settings": {},
+        "gestures": {
+            "swipe_left": "previous",
+            "swipe_right": "next"
+        }
+    },
+    "browsing": {
+        "description": "Navigation web précédent/suivant",
+        "settings": {},
+        "gestures": {
+            "swipe_left": "previous",
+            "swipe_right": "next",
+            "swipe_up": "none",
+            "swipe_down": "none"
+        }
+    }
+}

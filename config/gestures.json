@@ -2,5 +2,10 @@
     "pinch": "left_click",
     "pinch_double": "double_click",
     "pinch_hold_and_move": "drag",
-    "two_fingers": "right_click"
+    "two_fingers": "right_click",
+    "two_fingers_vertical": "scroll",
+    "swipe_left": "previous",
+    "swipe_right": "next",
+    "swipe_up": "mission_control",
+    "swipe_down": "show_desktop"
 }

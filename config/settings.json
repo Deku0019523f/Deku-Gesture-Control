@@ -11,7 +11,11 @@
         "dead_zone": 0.02
     },
     "gestures": {
-        "confidence_threshold": 0.8,
+        "confidence_threshold": 0.6,
+        "min_hold_duration": 0.05,
         "click_cooldown": 0.3
+    },
+    "interface": {
+        "theme": "dark"
     }
 }
