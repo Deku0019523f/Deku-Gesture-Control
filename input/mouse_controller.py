@@ -58,6 +58,7 @@ class MouseController:
     def drag_end(self) -> None:
         self.mouse_up()
 
-    # --- Réservé Phase 6 ---
+    # --- Phase 6 ---
     def scroll(self, amount: int) -> None:
-        raise NotImplementedError("Scroll : Phase 6")
+        if amount:
+            pyautogui.scroll(amount)
