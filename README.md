@@ -137,7 +137,7 @@ Pointez simplement votre **index** vers la webcam : le curseur suit sa position.
 Une "zone active" au centre de l'image webcam est mappée sur tout l'écran, pour
 ne pas avoir à approcher la main des bords physiques de la caméra.
 
-R�glable dans **Paramètres → Curseur** :
+Réglable dans **Paramètres → Curseur** :
 - **Sensibilité** : amplifie ou réduit l'amplitude du mouvement.
 - **Lissage** : réduit les tremblements (plus élevé = plus stable mais plus de latence).
 - **Zone morte** : ignore les micro-mouvements involontaires.
@@ -310,7 +310,7 @@ pip install pyinstaller
 packaging\build_windows.bat
 ```
 
-R�sultat : `dist\DekuGestureControl\DekuGestureControl.exe`, exécutable sur
+Résultat : `dist\DekuGestureControl\DekuGestureControl.exe`, exécutable sur
 n'importe quel PC Windows **sans installer Python**. Copiez tout le dossier
 `dist\DekuGestureControl` (l'exécutable a besoin des fichiers à côté de lui).
 
